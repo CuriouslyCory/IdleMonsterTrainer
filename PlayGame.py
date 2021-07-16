@@ -58,6 +58,19 @@ chest_h = chest.shape[0]
 close_button_w = close_button.shape[1]
 close_button_w = close_button.shape[0]
 
+tower_menu_close = [1727, 928]
+tower_menu_upgrade = [1521,927]
+drone_spawn_button = [1142, 220]
+drone_spawn_start = [1646,350]
+chest_modal_close = [1639, 350]
+carrier_spawn_button = [1139,279]
+carrier_spawn_start = [1408,787]
+spell1 = [1305, 939]
+spell2 = [1388, 939]
+spell3 = [1476, 939]
+spell4 = [1569, 939]
+
+
 fps_time = time()
 
 # check for a flying chest
@@ -80,7 +93,7 @@ def findAndClickChest():
         sleep(0.02)
 
         # click modal close button
-        pyautogui.click(1617, 345)
+        pyautogui.click(chest_modal_close[0], chest_modal_close[1])
 
     
     #cv2.imshow('Screen Shot', scr_remove)
@@ -91,31 +104,33 @@ def findAndClickChest():
 def upgradeMonsters(marks):
     for mark in marks:
         # click the monster
-        pyautogui.click(mark[0],mark[1])
+        pyautogui.click(mark[0], mark[1])
         sleep(0.02)
         # click the upgrade button
-        pyautogui.click(960 + 635, 850)
+        pyautogui.click(tower_menu_upgrade[0], tower_menu_upgrade[1])
         sleep(0.02)
     
     # click where the flying chest close button is just in case it got hit by accident
-    pyautogui.click(1617, 345)
+    pyautogui.click(chest_modal_close[0], chest_modal_close[1])
     sleep(0.02)
 
     # close out of the tower selection
-    pyautogui.click(1739, 872)
+    pyautogui.click(tower_menu_close[0], tower_menu_close[1])
     sleep(0.02)
 
 def clickAllSpells():
-    pyautogui.click(1552,867)
+    pyautogui.click(spell1[0], spell1[1])
     sleep(0.02)
-    pyautogui.click(1479,867)
+    pyautogui.click(spell2[0], spell2[1])
     sleep(0.02)
-    pyautogui.click(1408,867)
+    pyautogui.click(spell3[0], spell3[1])
     sleep(0.02)
-    pyautogui.click(1323,867)
+    pyautogui.click(spell4[0], spell4[1])
 
 def spawnDroneSwarm():
-    pyautogui.click(1143,226)
+    pyautogui.click(drone_spawn_button[0], drone_spawn_button[1])
+    sleep(0.02)
+    pyautogui.click(drone_spawn_start[0], drone_spawn_start[1])
     sleep(0.02)
     clickAllSpells()
 
