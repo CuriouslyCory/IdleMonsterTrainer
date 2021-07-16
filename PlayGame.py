@@ -49,7 +49,7 @@ y = 0
 loop_num = 0
 
 # read the needles and get shapes
-chest = cv2.imread('Chest.png')
+chest = cv2.imread('Chest2.png')
 close_button = cv2.imread('CloseButton.png')
 
 chest_w = chest.shape[1]
@@ -73,9 +73,9 @@ def findAndClickChest():
     _, max_val, _, max_loc = cv2.minMaxLoc(result)
     print(f"Max Val: {max_val} Max Loc: {max_loc}")
     src = scr.copy()
-    if max_val > .48:
-        x = max_loc[0] + dimensions['left'] + 5
-        y = max_loc[1] + dimensions['top'] + 5
+    if max_val > .75:
+        x = max_loc[0] + dimensions['left'] + (chest_w / 2)
+        y = max_loc[1] + dimensions['top'] + (chest_h /2)
         cv2.rectangle(scr, max_loc, (max_loc[0] + chest_w, max_loc[1] + chest_h), (0,255,255), 2)
         # click chest location
         pyautogui.click(x=x, y=y)
