@@ -49,12 +49,11 @@ y = 0
 loop_num = 0
 
 # read the needles and get shapes
-chest = cv2.imread('Chest2.png')
-close_button = cv2.imread('CloseButton.png')
+chest = cv2.imread('Chest2.png', cv2.IMREAD_GRAYSCALE)
+close_button = cv2.imread('CloseButton.png', cv2.IMREAD_GRAYSCALE)
 
 chest_w = chest.shape[1]
 chest_h = chest.shape[0]
-chest_remove = chest[:,:,:3]
 
 close_button_w = close_button.shape[1]
 close_button_w = close_button.shape[0]
@@ -63,12 +62,11 @@ fps_time = time()
 
 # check for a flying chest
 def findAndClickChest():
-    scr = numpy.array(sct.grab(dimensions))
-
-    # Cut off alpha
-    scr_remove = scr[:,:,:3]
     
-    result = cv2.matchTemplate(scr_remove, chest_remove, cv2.TM_CCOEFF_NORMED)
+    scr = numpy.array(sct.grab(dimensions))
+    scr_remove = cv2.cvtColor(scr, cv2.COLOR_BGR2GRAY)
+    
+    result = cv2.matchTemplate(scr_remove, chest, cv2.TM_CCOEFF_NORMED)
     
     _, max_val, _, max_loc = cv2.minMaxLoc(result)
     print(f"Max Val: {max_val} Max Loc: {max_loc}")
