@@ -13,11 +13,10 @@ class App(tk.Frame):
     
     #set all variables
     marks = []
+    active = True
 
     #get timestamp for reference
     starttime = time()
-    droneTime =  0
-    spellTime = 0
 
     # define the window position and size
     dimensions = {
@@ -26,11 +25,6 @@ class App(tk.Frame):
             'width': 650,
             'height': 930
         }
-
-    # init some variables
-    x = 0
-    y = 0
-    loop_num = 0
 
     # locations
     tower_menu_close = [1727, 928]
@@ -46,7 +40,7 @@ class App(tk.Frame):
     spell4 = [1569, 939]
 
     # read the needles and get shapes
-    chest = cv2.imread('Chest2.png', cv2.IMREAD_GRAYSCALE)
+    chest = cv2.imread('Chest5.png', cv2.IMREAD_GRAYSCALE)
 
     chest_w = chest.shape[1]
     chest_h = chest.shape[0]
@@ -94,7 +88,10 @@ class App(tk.Frame):
 
     # check for a flying chest
     def findAndClickChest(self):
-        
+        if self.active == False:
+            self.master.after(500, self.findAndClickChest)
+            return
+
         scr = numpy.array(self.sct.grab(self.dimensions))
         scr_remove = cv2.cvtColor(scr, cv2.COLOR_BGR2GRAY)
         
@@ -114,6 +111,7 @@ class App(tk.Frame):
 
             # click modal close button
             pyautogui.click(self.chest_modal_close[0], self.chest_modal_close[1])
+            sleep(0.02)
 
         #cv2.imshow('Screen Shot', scr_remove)
         #cv2.waitKey(1)
@@ -121,6 +119,9 @@ class App(tk.Frame):
     
 
     def upgradeMonsters(self):
+        if self.active == False:
+            self.master.after(500, self.upgradeMonsters)
+            return
         if(len(self.marks) > 0):
             for mark in self.marks:
                 # click the monster
@@ -141,6 +142,9 @@ class App(tk.Frame):
 
 
     def clickAllSpells(self):
+        if self.active == False:
+            self.master.after(500, self.clickAllSpells)
+            return
         pyautogui.click(self.spell1[0], self.spell1[1])
         sleep(0.02)
         pyautogui.click(self.spell2[0], self.spell2[1])
@@ -152,6 +156,9 @@ class App(tk.Frame):
 
 
     def spawnDroneSwarm(self):
+        if self.active == False:
+            self.master.after(500, self.spawnDroneSwarm)
+            return
         pyautogui.click(self.drone_spawn_button[0], self.drone_spawn_button[1])
         sleep(0.02)
         pyautogui.click(self.drone_spawn_start[0], self.drone_spawn_start[1])
@@ -161,7 +168,8 @@ class App(tk.Frame):
 
     def pause(self):
         #do some pause
-        self.state = False if self.state == True else False
+        self.active = False if self.active == True else True
+        self.pauseBtn["text"] = "Pause" if self.active == True else "Unpause"
 
     def logPosition(self):
         # debug logging the position of the mouse
