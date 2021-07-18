@@ -49,14 +49,10 @@ y = 0
 loop_num = 0
 
 # read the needles and get shapes
-chest = cv2.imread('Chest2.png', cv2.IMREAD_GRAYSCALE)
-close_button = cv2.imread('CloseButton.png', cv2.IMREAD_GRAYSCALE)
+chest = cv2.imread('chest5.png', cv2.IMREAD_GRAYSCALE)
 
 chest_w = chest.shape[1]
 chest_h = chest.shape[0]
-
-close_button_w = close_button.shape[1]
-close_button_w = close_button.shape[0]
 
 tower_menu_close = [1727, 928]
 tower_menu_upgrade = [1521,927]
