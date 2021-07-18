@@ -1,10 +1,11 @@
-import keyboard
+#import keyboard
 import mss
 import cv2
 import numpy
 from time import time, sleep
 import pyautogui
 import tkinter as tk
+from pynput import keyboard, mouse
 
 pyautogui.PAUSE = 0
 
@@ -20,30 +21,35 @@ class App(tk.Frame):
 
     # define the window position and size
     dimensions = {
-            'left': 1120,
-            'top': 50,
+            'left': 1270,
+            'top': 30,
             'width': 650,
-            'height': 930
+            'height': 1040
         }
 
     # locations
-    tower_menu_close = [1727, 928]
-    tower_menu_upgrade = [1521,927]
-    drone_spawn_button = [1142, 220]
-    drone_spawn_start = [1646,350]
-    chest_modal_close = [1639, 350]
-    carrier_spawn_button = [1139,279]
-    carrier_spawn_start = [1408,787]
-    spell1 = [1305, 939]
-    spell2 = [1388, 939]
-    spell3 = [1476, 939]
-    spell4 = [1569, 939]
+    locations = {
+        "tower_menu_close": {"x": 1888, "y": 930},
+        "tower_menu_upgrade": {"x": 1675, "y":930},
+        "drone_spawn_button": {"x": 1306, "y": 220},
+        "drone_spawn_start": {"x": 1593, "y": 707},
+        "chest_modal_close": {"x": 1639, "y": 350},
+        "carrier_spawn_button": {"x": 1304, "y": 288},
+        "carrier_spawn_start": {"x": 1595, "y": 796},
+        "spell1": {"x": 1464, "y": 939},
+        "spell2": {"x": 1546, "y": 939},
+        "spell3": {"x": 1634, "y": 939},
+        "spell4": {"x": 1739, "y": 939},
+    }
+    
 
     # read the needles and get shapes
     chest = cv2.imread('Chest5.png', cv2.IMREAD_GRAYSCALE)
 
     chest_w = chest.shape[1]
     chest_h = chest.shape[0]
+
+    locBtns = {}
 
     sct = mss.mss()
     
@@ -75,16 +81,48 @@ class App(tk.Frame):
         self.chestDebug = tk.Label(self)
         self.chestDebug.grid(column=1, row=3)
 
+        for key in self.locations:
+            self.locBtns[key] = tk.Button(self)
+            self.locBtns[key]["text"] = "Set {} location".format(key)
+            self.locBtns[key]["command"] = lambda arg1=key: self.setLoc(arg1)
+            self.locBtns[key].grid(column=1)
+
+    def setLoc(self, key):
+        print("Location {}".format(key))
+        self.updatingLocation = key
+        listener = mouse.Listener(
+            on_click = self.updateLocation
+        )
+        listener.start()
+
+    def updateLocation(self, x, y, button, pressed):
+        self.locations[self.updatingLocation][x] = x
+        self.locations[self.updatingLocation][y] = y
+        print("{}: {},{}".format(self.updatingLocation, x, y))
+        self.updatingLocation = None
+        return False
 
     def markTowers(self):
         # user defined monster positions
         self.marks = []
-        print("Put mouse over targets and press 'm' to mark.")
-        while len(self.marks) < 10:
-            keyboard.wait('m')
+        listener =  keyboard.Listener(
+            on_press = self.on_press,
+            on_release = self.markTower
+        )
+        listener.start()
+        
+    def on_press(self, key):
+        print("listener hears press")
+
+    def markTower(self, key):
+        if key.char == "m":
             x, y = pyautogui.position()
             self.marks.append([x, y])
             print("Marks: {}, Position: {}, {}".format(len(self.marks), x, y))
+
+        if len(self.marks) >= 10:
+            return False
+
 
     # check for a flying chest
     def findAndClickChest(self):
@@ -101,7 +139,7 @@ class App(tk.Frame):
         debugStr = "Max Val: {} Max Loc: {}".format(max_val, max_loc)
         self.chestDebug["text"] = debugStr
         src = scr.copy()
-        if max_val > .75:
+        if max_val > .65:
             x = max_loc[0] + self.dimensions['left'] + (self.chest_w / 2)
             y = max_loc[1] + self.dimensions['top'] + (self.chest_h /2)
             cv2.rectangle(scr, max_loc, (max_loc[0] + self.chest_w, max_loc[1] + self.chest_h), (0,255,255), 2)
@@ -110,11 +148,11 @@ class App(tk.Frame):
             sleep(0.02)
 
             # click modal close button
-            pyautogui.click(self.chest_modal_close[0], self.chest_modal_close[1])
+            pyautogui.click(self.locations["chest_modal_close"]["x"], self.locations["chest_modal_close"]["y"])
             sleep(0.02)
 
-        #cv2.imshow('Screen Shot', scr_remove)
-        #cv2.waitKey(1)
+        cv2.imshow('Result', scr_remove)
+        cv2.waitKey(1)
         self.master.after(500, self.findAndClickChest)
     
 
@@ -128,15 +166,15 @@ class App(tk.Frame):
                 pyautogui.click(mark[0], mark[1])
                 sleep(0.02)
                 # click the upgrade button
-                pyautogui.click(self.tower_menu_upgrade[0], self.tower_menu_upgrade[1])
+                pyautogui.click(self.locations["tower_menu_upgrade"]["x"], self.locations["tower_menu_upgrade"]["y"])
                 sleep(0.02)
             
             # click where the flying chest close button is just in case it got hit by accident
-            pyautogui.click(self.chest_modal_close[0], self.chest_modal_close[1])
+            pyautogui.click(self.locations["chest_modal_close"]["x"], self.locations["chest_modal_close"]["y"])
             sleep(0.02)
 
             # close out of the tower selection
-            pyautogui.click(self.tower_menu_close[0], self.tower_menu_close[1])
+            pyautogui.click(self.locations["tower_menu_close"]["x"], self.locations["tower_menu_close"]["y"])
             sleep(0.02)
         self.master.after(4000, self.upgradeMonsters)
 
@@ -145,13 +183,13 @@ class App(tk.Frame):
         if self.active == False:
             self.master.after(500, self.clickAllSpells)
             return
-        pyautogui.click(self.spell1[0], self.spell1[1])
+        pyautogui.click(self.locations["spell1"]["x"], self.locations["spell1"]["y"])
         sleep(0.02)
-        pyautogui.click(self.spell2[0], self.spell2[1])
+        pyautogui.click(self.locations["spell2"]["x"], self.locations["spell2"]["y"])
         sleep(0.02)
-        pyautogui.click(self.spell3[0], self.spell3[1])
+        pyautogui.click(self.locations["spell3"]["x"], self.locations["spell3"]["y"])
         sleep(0.02)
-        pyautogui.click(self.spell4[0], self.spell4[1])
+        pyautogui.click(self.locations["spell4"]["x"], self.locations["spell4"]["y"])
         self.master.after(30000, self.clickAllSpells)
 
 
@@ -159,9 +197,9 @@ class App(tk.Frame):
         if self.active == False:
             self.master.after(500, self.spawnDroneSwarm)
             return
-        pyautogui.click(self.drone_spawn_button[0], self.drone_spawn_button[1])
+        pyautogui.click(self.locations["drone_spawn_button"]["x"], self.locations["drone_spawn_button"]["y"])
         sleep(0.02)
-        pyautogui.click(self.drone_spawn_start[0], self.drone_spawn_start[1])
+        pyautogui.click(self.locations["drone_spawn_start"]["x"], self.locations["drone_spawn_start"]["y"])
         sleep(0.02)
         self.clickAllSpells()
         self.master.after(120000, self.spawnDroneSwarm)
