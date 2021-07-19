@@ -38,7 +38,7 @@ class App(tk.Frame):
     locations = {
         "prestige_menu_btn": {"x": 1300, "y": 155},
         "prestige_trigger": {"x": 1585, "y": 865},
-        "prestige_map_select": {"x": 1585, "y": 865},
+        "prestige_map_select": {"x": 1482, "y": 390},
         "load_monster_main_btn": {"x": 1891, "y": 152},
         "load_monster_first_btn": {"x": 1764, "y": 447},
         "tower_menu_close": {"x": 1888, "y": 930},
@@ -59,7 +59,7 @@ class App(tk.Frame):
         'Enchanted Forest',
         'Snowfall',
         'Lava Cave',
-        'Deadwood',
+        'Dead Woods',
         'Cursed Clouds',
         'Beach Run'
         ]
@@ -75,12 +75,13 @@ class App(tk.Frame):
     locBtns = {}
 
     defeats_this_prestige = 0
-    defeats_before_prestige = 1
+    defeats_before_prestige = 3
 
     sct = mss.mss()
     
     def __init__(self, master=None):
         tk.Frame.__init__(self, master)
+        self.master.geometry('400x850')
         self.pack()
         self.createWidgets()
         self.startLoops()
@@ -111,12 +112,7 @@ class App(tk.Frame):
         self.pauseBtn["command"] = self.pause
         self.pauseBtn.grid(column=1, row=3)
 
-        #create debug text
-        self.locationTxt = tk.Label(self)
-        self.locationTxt.grid(column=1, row=4)
         
-        self.chestDebug = tk.Label(self)
-        self.chestDebug.grid(column=1, row=5)
 
         for key in self.locations:
             self.locBtns[key] = tk.Button(self)
@@ -127,6 +123,16 @@ class App(tk.Frame):
         self.defeatLbl = tk.Label(self)
         self.defeatLbl["text"] = "0 defeats"
         self.defeatLbl.grid(column=1)
+
+        #create debug text
+        self.locationTxt = tk.Label(self)
+        self.locationTxt.grid(column=1)
+        
+        self.chestDebug = tk.Label(self)
+        self.chestDebug.grid(column=1)
+
+        self.currentMapLbl = tk.Label(self)
+        self.currentMapLbl.grid(column=1)
 
     def loadMap(self):
         map = self.guessMapName()
@@ -345,21 +351,36 @@ class App(tk.Frame):
                 #cv2.waitKey()
 
                 if max_val > .80:
-                    self.debug("Map is {}".format(map))
+                    self.debug("Map is {}".format(key))
+                    self.currentMapLbl["text"] = "Current Map: {}".format(key)
                     return key
                 
     def triggerPrestige(self):
-        self.defeats_this_prestige = 0
+        # disable other loops while this is happening
+        self.active = False
+
+        # reset deaths
+        self.resetDefeat()
+        # click on the main menu button
         pyautogui.click(self.locations["prestige_menu_btn"]["x"], self.locations["prestige_menu_btn"]["y"])
         sleep(0.5)
+        # click to accept prestige
         pyautogui.click(self.locations["prestige_trigger"]["x"], self.locations["prestige_trigger"]["y"])
         sleep(0.5)
+        # select primary map rotation
         pyautogui.click(self.locations["prestige_map_select"]["x"], self.locations["prestige_map_select"]["y"])
-        sleep(5)
+        sleep(6)
+        
+        # open monster layout manager
         pyautogui.click(self.locations["load_monster_main_btn"]["x"], self.locations["load_monster_main_btn"]["y"])
         sleep(0.02)
+        # select primary monster layout
         pyautogui.click(self.locations["load_monster_first_btn"]["x"], self.locations["load_monster_first_btn"]["y"])
         sleep(0.02)
+        # load markers for tower locations
+        self.loadMap()
+        # reenable normal loops
+        self.active = True
 
     def updateScreenShot(self):
         self.scr = numpy.array(self.sct.grab(self.dimensions))
@@ -375,16 +396,25 @@ class App(tk.Frame):
         debugStr = "Max Val: {} Max Loc: {}".format(max_val, max_loc)
         self.chestDebug["text"] = debugStr
         if max_val > .85:
-            self.defeats_this_prestige += 1
-            self.defeatLbl["text"] = "{} defeats this prestige".format(self.defeats_this_prestige)
-            if self.defeats_this_prestige >= self.defeats_before_prestige:
-                pyautogui.click(self.locations["prestige_menu_btn"]["x"], self.locations["prestige_menu_btn"]["y"])
-                self.master.after(5000, self.triggerPrestige)
+            self.addDefeat()
             self.master.after(10000, self.defeatWatch)
             return
 
         self.master.after(500, self.defeatWatch)
 
+    def addDefeat(self):
+        self.defeats_this_prestige += 1
+        self.updateDefeatLbl()
+        if self.defeats_this_prestige >= self.defeats_before_prestige:
+            pyautogui.click(self.locations["prestige_menu_btn"]["x"], self.locations["prestige_menu_btn"]["y"])
+            self.master.after(5000, self.triggerPrestige)
+
+    def resetDefeat(self):
+        self.defeats_this_prestige = 0
+        self.updateDefeatLbl()
+
+    def updateDefeatLbl(self):
+        self.defeatLbl["text"] = "{} defeats this prestige".format(self.defeats_this_prestige)
 
 if __name__ == "__main__":
     root = tk.Tk()
