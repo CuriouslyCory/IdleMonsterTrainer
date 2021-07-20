@@ -52,6 +52,8 @@ class App(tk.Frame):
         "spell2": {"x": 1546, "y": 939},
         "spell3": {"x": 1634, "y": 939},
         "spell4": {"x": 1739, "y": 939},
+        "close_rate_modal": {"x": 1813, "y": 300},
+        "close_monster_menu": {"x": 1840, "y": 158}
     }
 
     # maps
@@ -64,18 +66,12 @@ class App(tk.Frame):
         'Beach Run'
         ]
     map_needles = {}
-    
-    # read the needles and get shapes
-    chest = cv2.imread('Chest5.png', cv2.IMREAD_GRAYSCALE)
-    chest_w = chest.shape[1]
-    chest_h = chest.shape[0]
-
-    defeat_needle = cv2.imread('needles/defeat.png', cv2.IMREAD_GRAYSCALE)
 
     locBtns = {}
 
     defeats_this_prestige = 0
-    defeats_before_prestige = 3
+    defeats_before_prestige = 10
+    needles = {}
 
     sct = mss.mss()
     
@@ -84,9 +80,22 @@ class App(tk.Frame):
         self.master.geometry('400x850')
         self.pack()
         self.createWidgets()
+        self.loadNeedles()
+        
         self.startLoops()
         
         
+    def loadNeedles(self):
+        # read the needles and get shapes
+        self.chest = cv2.imread('Chest5.png', cv2.IMREAD_GRAYSCALE)
+        self.chest_w = self.chest.shape[1]
+        self.chest_h = self.chest.shape[0]
+
+        self.needles['defeat'] = cv2.imread('needles/defeat.png', cv2.IMREAD_GRAYSCALE)
+        self.needles['rate_me'] = cv2.imread('needles/RateMeButton.png')
+        self.needles['monster_menu'] = cv2.imread('needles/MonsterMenu.png')
+        self.needles['monster_details_menu'] = cv2.imread('needles/MonsterDetailsMenu.png')
+
     def createWidgets(self):
         self.debug("Create Widgets")
 
@@ -111,8 +120,6 @@ class App(tk.Frame):
         self.pauseBtn["text"] = "Pause"
         self.pauseBtn["command"] = self.pause
         self.pauseBtn.grid(column=1, row=3)
-
-        
 
         for key in self.locations:
             self.locBtns[key] = tk.Button(self)
@@ -184,24 +191,16 @@ class App(tk.Frame):
 
     # check for a flying chest
     def findAndClickChest(self):
-        self.debug("Find and Click Chest")
+        #self.debug("Find and Click Chest")
         if self.active == False:
             self.master.after(500, self.findAndClickChest)
             return
 
-        scr = numpy.array(self.sct.grab(self.dimensions))
-        scr_remove = cv2.cvtColor(scr, cv2.COLOR_BGR2GRAY)
-        
-        result = cv2.matchTemplate(scr_remove, self.chest, cv2.TM_CCOEFF_NORMED)
-        
-        _, max_val, _, max_loc = cv2.minMaxLoc(result)
-        debugStr = "Max Val: {} Max Loc: {}".format(max_val, max_loc)
-        self.chestDebug["text"] = debugStr
-        src = scr.copy()
-        if max_val > .65:
+        result_confidence, max_loc = self.detectNeedle(self.chest, grayscale=True)
+        if result_confidence > .65:
             x = max_loc[0] + self.dimensions['left'] + (self.chest_w / 2)
             y = max_loc[1] + self.dimensions['top'] + (self.chest_h /2)
-            cv2.rectangle(scr, max_loc, (max_loc[0] + self.chest_w, max_loc[1] + self.chest_h), (0,255,255), 2)
+            # cv2.rectangle(scr, max_loc, (max_loc[0] + self.chest_w, max_loc[1] + self.chest_h), (0,255,255), 2)
             # click chest location
             pyautogui.click(x=x, y=y)
             sleep(0.02)
@@ -216,7 +215,7 @@ class App(tk.Frame):
     
 
     def upgradeMonsters(self, loop = True):
-        self.debug("Upgrade Monsters")
+        #self.debug("Upgrade Monsters")
         if self.active == False and loop == True:
             self.master.after(500, self.upgradeMonsters)
             return
@@ -306,7 +305,14 @@ class App(tk.Frame):
         # log position every half second
         self.logPosition()
 
+        # watch for the defeat screen
         self.defeatWatch()
+        
+        # make sure no empty tower locations are being clicked
+        self.checkMonstersLoaded()
+
+        # watch for the rate me modal and close it
+        self.detectRateMe()
 
     def debug(self, msg):
         if self.show_debug == True:
@@ -336,21 +342,11 @@ class App(tk.Frame):
 
 
     def guessMapName(self):
-        scr = numpy.array(self.sct.grab(self.dimensions))
-        scr_removed = scr[:,:,:3]
-        
         for key in self.map_needles:
             if self.map_needles[key] is not None:
-                result = cv2.matchTemplate(scr_removed, self.map_needles[key], cv2.TM_CCOEFF_NORMED)
-            
-                _, max_val, _, max_loc = cv2.minMaxLoc(result)
-                debugStr = "Max Val: {} Max Loc: {}".format(max_val, max_loc)
-                self.debug(debugStr)
-
-                #cv2.imshow('Result', scr_removed)
-                #cv2.waitKey()
-
-                if max_val > .80:
+                result_confidence, max_loc = self.detectNeedle(self.map_needles[key])
+                
+                if result_confidence > .80:
                     self.debug("Map is {}".format(key))
                     self.currentMapLbl["text"] = "Current Map: {}".format(key)
                     return key
@@ -370,7 +366,13 @@ class App(tk.Frame):
         # select primary map rotation
         pyautogui.click(self.locations["prestige_map_select"]["x"], self.locations["prestige_map_select"]["y"])
         sleep(6)
+
+        self.loadMonsterLayout()
         
+        # reenable normal loops
+        self.active = True
+
+    def loadMonsterLayout(self):
         # open monster layout manager
         pyautogui.click(self.locations["load_monster_main_btn"]["x"], self.locations["load_monster_main_btn"]["y"])
         sleep(0.02)
@@ -379,23 +381,49 @@ class App(tk.Frame):
         sleep(0.02)
         # load markers for tower locations
         self.loadMap()
-        # reenable normal loops
-        self.active = True
 
     def updateScreenShot(self):
-        self.scr = numpy.array(self.sct.grab(self.dimensions))
-        self.scr_gray = cv2.cvtColor(self.scr, cv2.COLOR_BGR2GRAY)
+        scr = numpy.array(self.sct.grab(self.dimensions))
+        self.scr = scr[:,:,:3]
+        self.scr_gray = cv2.cvtColor(scr, cv2.COLOR_BGR2GRAY)
         self.master.after(500, self.updateScreenShot)
 
+    def checkMonstersLoaded(self):
+        if self.active == False:
+            self.master.after(500, self.checkMonstersLoaded)
+            return
+            
+        result_confidence, max_loc = self.detectNeedle(self.needles['monster_menu'])
+        if result_confidence > 0.85:
+            pyautogui.click(self.locations["close_monster_menu"]["x"], self.locations["close_monster_menu"]["y"])
+            sleep(0.05)
+            pyautogui.click(self.locations["close_monster_menu"]["x"], self.locations["close_monster_menu"]["y"])
+            sleep(0.05)
+            self.loadMonsterLayout()
+
+        result_confidence, max_loc = self.detectNeedle(self.needles['monster_details_menu'])
+        if result_confidence > 0.85:
+            pyautogui.click(self.locations["close_monster_menu"]["x"], self.locations["close_monster_menu"]["y"])
+            sleep(0.05)
+            pyautogui.click(self.locations["close_monster_menu"]["x"], self.locations["close_monster_menu"]["y"])
+            sleep(0.05)
+            self.loadMonsterLayout()
+        self.master.after(10000, self.checkMonstersLoaded)
+
+    def detectRateMe(self):
+        result_confidence, max_loc = self.detectNeedle(self.needles['rate_me'])
+        if result_confidence > 0.85:
+            pyautogui.click(self.locations["close_rate_modal"]["x"], self.locations["close_rate_modal"]["y"])
+            sleep(0.05)
+
+            self.loadMonsterLayout()
+        self.master.after(10000, self.detectRateMe)
+
     def defeatWatch(self):
-        self.debug("Watch for defeat")
+        # self.debug("Watch for defeat")
         
-        result = cv2.matchTemplate(self.scr_gray, self.defeat_needle, cv2.TM_CCOEFF_NORMED)
-        
-        _, max_val, _, max_loc = cv2.minMaxLoc(result)
-        debugStr = "Max Val: {} Max Loc: {}".format(max_val, max_loc)
-        self.chestDebug["text"] = debugStr
-        if max_val > .85:
+        result_confidence, max_loc = self.detectNeedle(self.needles['defeat'], grayscale=True)
+        if result_confidence > .85:
             self.addDefeat()
             self.master.after(10000, self.defeatWatch)
             return
@@ -415,6 +443,21 @@ class App(tk.Frame):
 
     def updateDefeatLbl(self):
         self.defeatLbl["text"] = "{} defeats this prestige".format(self.defeats_this_prestige)
+
+    def detectNeedle(self, needle, grayscale=False):
+        if grayscale == True:
+            scr = self.scr_gray
+        else: 
+            scr = self.scr
+        
+        for key in self.map_needles:
+            if self.map_needles[key] is not None:
+                result = cv2.matchTemplate(scr, needle, cv2.TM_CCOEFF_NORMED)
+            
+                _, max_val, _, max_loc = cv2.minMaxLoc(result)
+                #debugStr = "Max Val: {} Max Loc: {}".format(max_val, max_loc)
+                #self.debug(debugStr)
+                return max_val, max_loc
 
 if __name__ == "__main__":
     root = tk.Tk()
